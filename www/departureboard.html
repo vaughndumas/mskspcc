@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang=""> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8" lang=""> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9" lang=""> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang=""> <!--<![endif]-->
+    <head>
+	<title>MySkoolBus</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        
+        <link href="css/leaflet.css" rel="stylesheet" type="text/css"/>
+        <link href="css/jquery.mobile-1.4.5.min.css" rel="stylesheet" type="text/css"/>
+        <link rel="stylesheet" href="css/normalize.min.css">
+        <link rel="stylesheet" href="css/main.css">
+        <!-- <link rel="stylesheet" href="//cdn.datatables.net/1.10.3/css/jquery.dataTables.min.css" /> -->
+        <link href="css/jquery.dataTables.min.css" rel="stylesheet" type="text/css"/>
+        
+        <script src="js/leaflet.js" type="text/javascript"></script>
+        <script src="js/vendor/jquery-1.11.2.js"></script>
+        <script src="js/jquery.mobile-1.4.5.min.js"></script>
+        <!-- <script src="http://cdn.datatables.net/1.10.3/js/jquery.dataTables.min.js"></script> -->
+        
+        <script src="js/vendor/modernizr-2.8.3-respond-1.4.2.min.js"></script>
+        <script src="js/jquery.dataTables.min.js" type="text/javascript"></script>
+
+        <script type="text/javascript">
+                var vg_tab01 = $("#list_table_01").DataTable({
+                    "searching": false,
+                    "ordering": false,
+                    "info": false,
+                    "paging": false
+                });             
+                v_tmptab = $("#list_table_01").DataTable();
+            $(document).ready(function () {
+                $("#list_table_01").DataTable({
+                    "searching": false,
+                    "ordering": false,
+                    "info": false,
+                    "paging": false,
+                    "language": {
+                        "emptyTable": "",
+                        "zeroRecords": ""
+                    }
+                });
+
+                
+                /*
+                 * Get the departure board automagically.
+                 */
+                var v_url = vg_base_url + "/index.php/ri_sync/get_departure_board";
+                //$("#div_dep_list").hide();
+                v_ampm = localStorage.getItem("x_ampm");
+                v_route = localStorage.getItem("x_route");
+                var today = new Date();
+                v_curdate = today.getFullYear() + "-" + (today.getMonth() + 1) + "-" + today.getDate();
+                
+                $(function() {
+                   $.ajax({
+                       url:  v_url,
+                       type: "POST",
+                       data: {x_route: v_route, ampm: v_ampm, x_start_date: v_curdate}
+                   })
+                   .done(function(v_data) {
+                       v_return = v_data;
+                       v_schedule_data = jQuery.parseJSON(v_return);                       
+                       v_tmptab.clear().draw();
+
+                       $.each(v_schedule_data, function(x_index, x_value) {
+                         $("#list_table_01 > tbody:last").append('<tr id="'+x_value.route_id+"_"+(x_value.stop_name).replace(/\ /g, "_")+ '" ts_status="waiting" hardwareid="'+x_value.hardwareid+'"><td>'+x_value.stop_name+'</td><td>'+x_value.arrival_time+'</td><td class="depbrd_skipped">&nbsp;</td></tr>');
+                         setTimeout(function() {check_bus_position(x_value.route_id,x_value.hardwareid,x_value.stop_name,v_ampm, v_curdate);}, 5000);
+                       });
+                   });
+                });
+                
+                
+            });
+            
+            function check_bus_position(x_route_id, x_hardwareid, x_stop_name, x_ampm, x_date) {
+                var v_url = vg_base_url + "/index.php/ri_sync/check_route_stop";
+                $(function() {
+                    $.ajax({
+                        url:  v_url,
+                        type: "POST",
+                        data: {x_stop_name: x_stop_name, x_hardwareid:x_hardwareid, x_route_id: x_route_id, x_ampm: x_ampm, x_start_date: x_date }
+                    })
+                    .done(function(x_data) {
+                        v_return = x_data;
+                        //console.log(x_route_id + ":" + x_hardwareid + ":" + x_stop_name + ":" + x_ampm + ":" + ":" + $("#x_start_date").val() + ":" + v_return);
+                        if (v_return === "0") {
+                            setTimeout(function() {check_bus_position(x_route_id,x_hardwareid,x_stop_name,x_ampm, x_date);}, 30000);
+                        } else {
+                            v_tmpid = x_route_id+"_"+(x_stop_name).replace(/\ /g, "_");
+                            $("#" + v_tmpid).attr("ts_status", "reached");
+                            $("#" + v_tmpid + " td:nth-child(" + 3 + ")").attr("class", "reached");
+                            $("#" + v_tmpid + " td:nth-child(" + 3 + ")").text("Reached");
+                        }
+                    });
+                });
+            }
+        </script>
+        <script src="js/main.js"></script>
+    </head>
+    <body>
+        <div class="header-container">
+            <header class="wrapper clearfix">
+                <h1 class="title">MySkoolBus</h1>
+                <br />
+                <h2 class="title">Departure board</h2>
+            </header>
+        </div>
+        <div class="main-container">
+            <div class="main wrapper clearfix">
+<!--                <div id="div_dep_list" style="display: none">-->
+                    <table id="list_table_01" class="hover stripe">
+                        <thead>
+                            <tr>
+                                <th>Route stop</th>
+                                <th>Scheduled arrival</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+<a href="#" data-role="button" class="ui-btn" onClick="location.replace('mainmenu.html'); return false;" rel="external">Routes</a>
+<!--                </div> -->
+
+            </div> <!-- #main -->
+        </div> <!-- #main-container -->
+
+        <div class="footer-container">
+            <footer class="wrapper">
+                <h3>Powered by:  Tracking Solutions</h3>
+            </footer>
+        </div>
+
+        <!--<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.js"></script>-->
+        <!--<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.11.2.js"><\/script>');</script>-->
+        <!--<script>window.jQuery || document.write('<script src="js/jquery-mobile-1.4.5.min.js"><\/script>');</script>-->
+
+    </body>
+</html>
